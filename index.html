@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Риболовля для новачків — Premium Гід</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;900&family=Playfair+Display:wght@700&family=Roboto+Mono:wght@500&display=swap" rel="stylesheet">
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+// 1. ИГРА
+const castBtn = document.getElementById('castBtn');
+const hookBtn = document.getElementById('hookBtn');
+const floatBobber = document.getElementById('floatBobber');
+const gameStatus = document.getElementById('gameStatus');
+const basketItems = document.getElementById('basketItems');
+const fishCountSpan = document.getElementById('fishCount');
+
+let isWaiting = false, biteTimeout, escapeTimeout, fishCount = 0;
+const fishTypes = [
+{ name: 'Окунь', emoji: '🐟', weight: '150-300г', chance: 0.4 },
+{ name: 'Карась', emoji: '🐠', weight: '200-500г', chance: 0.3 },
+{ name: 'Щука', emoji: '🦈', weight: '1-3кг', chance: 0.2 },
+{ name: 'Сом', emoji: '🐋', weight: '3-8кг', chance: 0.1 }
+ ];
+
+if (castBtn && hookBtn) {
+castBtn.addEventListener('click', () => {
+if (isWaiting) return;
+isWaiting = true;
+castBtn.disabled = true;
+gameStatus.textContent = 'Закинуто... Чекаємо на рибу...';
+gameStatus.style.color = 'var(--accent)';
+floatBobber.classList.remove('biting', 'hooked');
+floatBobber.style.transform = 'translateY(0)';
+
+const waitTime = Math.random() * 4000 + 2000;
+biteTimeout = setTimeout(() => {
+floatBobber.classList.add('biting');
+hookBtn.style.display = 'inline-block';
+castBtn.style.display = 'none';
+gameStatus.textContent = 'КЛЮЄ! Тисни ПІДСІКТИ!';
+
+escapeTimeout = setTimeout(() => {
+floatBobber.classList.remove('biting');
+hookBtn.style.display = 'none';
+castBtn.style.display = 'inline-block';
+castBtn.disabled = false;
+isWaiting = false;
+gameStatus.textContent = 'Ех, зійшла риба... Спробуй ще раз!';
+gameStatus.style.color = '#f87171';
+}, 1500);
+}, waitTime);
+});
+
+hookBtn.addEventListener('click', () => {
+clearTimeout(escapeTimeout);
+floatBobber.classList.remove('biting');
+floatBobber.classList.add('hooked');
+hookBtn.style.display = 'none';
+
+const rand = Math.random();
+let caughtFish, sum = 0;
+for (let f of fishTypes) {
+sum += f.chance;
+if (rand <= sum) { caughtFish = f; break; }
+}
+
+gameStatus.textContent = 🎉 Улов! Ти зловив ${caughtFish.name} (${caughtFish.weight})!;
+gameStatus.style.color = '#4ade80';
+
+fishCount++;
+fishCountSpan.textContent = fishCount;
+const fishEl = document.createElement('div');
+fishEl.className = 'basket-fish';
+fishEl.innerHTML = ${caughtFish.emoji} ${caughtFish.name};
+basketItems.appendChild(fishEl);
+
+setTimeout(() => {
+floatBobber.classList.remove('hooked');
+castBtn.style.display = 'inline-block';
+castBtn.disabled = false;
+isWaiting = false;
+gameStatus.textContent = 'Закидай знову!';
+}, 2000);
+});
+}
+
+// 2. ВИКТОРИНА
+const quizData = [
+{ q: 'Яка риба має вуса?', opts: ['Щука', 'Короп', 'Окунь', 'Судак'], correct: 1 },
+{ q: 'Яка риба найкраще ловиться на живець?', opts: ['Карась', 'Плітка', 'Щука', 'Лящ'], correct: 2 },
+{ q: 'Що з цього НЕ є наживкою?', opts: ['Опариш', 'Черв'як', 'Кукурудза', 'Поплавок'], correct: 3 },
+{ q: 'Як називається снасть з годівницею?', opts: ['Спінінг', 'Фідер', 'Блешня', 'Вудка'], correct: 1 },
+{ q: 'Коли найкращий час для риболовлі?', opts: ['Опівдні', 'Світанок та сутінки', 'Під час грози', 'О 15:00'], correct: 1 }
+];
+
+let currentQ = 0, score = 0;
+const quizQuestionEl = document.getElementById('quizQuestion');
+const quizOptionsEl = document.getElementById('quizOptions');
+const quizResultEl = document.getElementById('quizResult');
+const quizNextBtn = document.getElementById('quizNextBtn');
+
+function loadQuestion() {
+if (!quizQuestionEl) return;
+if (currentQ >= quizData.length) {
+quizQuestionEl.textContent = Вікторина завершена! Твій результат: ${score} з ${quizData.length};
+quizOptionsEl.innerHTML = '';
+quizNextBtn.style.display = 'none';
+quizResultEl.innerHTML = score === quizData.length ? '🏆 Ти справжній знавець!' : '👍 Непогано, але є куди рости!';
+return;
+}
+const q = quizData[currentQ];
+quizQuestionEl.textContent = q.q;
+quizOptionsEl.innerHTML = '';
+quizResultEl.textContent = '';
+quizNextBtn.style.display = 'none';
+q.opts.forEach((opt, index) => {
+const btn = document.createElement('button');
+btn.className = 'quiz-opt-btn';
+btn.textContent = opt;
+btn.onclick = () => checkAnswer(index, btn);
+quizOptionsEl.appendChild(btn);
+});
+}
+
+function checkAnswer(selected, btn) {
+const q = quizData[currentQ];
+const allBtns = quizOptionsEl.querySelectorAll('.quiz-opt-btn');
+allBtns.forEach(b => b.disabled = true);
+if (selected === q.correct) {
+btn.classList.add('correct');
+quizResultEl.textContent = 'Правильно! ✅';
+quizResultEl.style.color = '#4ade80';
+score++;
+} else {
+btn.classList.add('wrong');
+allBtns[q.correct].classList.add('correct');
+quizResultEl.textContent = 'Неправильно! ❌';
+quizResultEl.style.color = '#f87171';
+}
+quizNextBtn.style.display = 'inline-block';
+}
+
+if(quizNextBtn) {
+quizNextBtn.addEventListener('click', () => { currentQ++; loadQuestion(); });
+loadQuestion();
+}
+
+// 3. НАСТРОЙКИ
+document.querySelectorAll('.menu-btn').forEach(function(btn){
+btn.addEventListener('click', function(){ this.parentElement.classList.toggle('open'); });
+});
+var settingsBtn = document.getElementById('settingsBtn'), settingsPanel = document.getElementById('settingsPanel');
+if(settingsBtn && settingsPanel) settingsBtn.addEventListener('click', function(){ settingsPanel.classList.toggle('open'); });
+
+var colorBtns = document.querySelectorAll('.color-btn');
+colorBtns.forEach(btn => btn.addEventListener('click', function() {
+document.body.setAttribute('data-theme', this.getAttribute('data-color'));
+colorBtns.forEach(b => b.classList.remove('active')); this.classList.add('active');
+}));
+
+var fontBtns = document.querySelectorAll('.font-btn');
+fontBtns.forEach(btn => btn.addEventListener('click', function() {
+document.body.setAttribute('data-font', this.getAttribute('data-font'));
+fontBtns.forEach(b => b.classList.remove('active')); this.classList.add('active');
+}));
+
+var bgBtns = document.querySelectorAll('.bg-btn');
+bgBtns.forEach(btn => btn.addEventListener('click', function() {
+document.body.setAttribute('data-bg', this.getAttribute('data-bg'));
+bgBtns.forEach(b => b.classList.remove('active')); this.classList.add('active');
+}));
+
+// 4. ПУЗЫРЬКИ
+var bubblesContainer = document.getElementById('bubbles');
+if (bubblesContainer) {
+for (var i = 0; i < 15; i++) {
+var bubble = document.createElement('div');
+bubble.classList.add('bubble');
+var size = Math.random() * 40 + 10;
+bubble.style.width = size + 'px'; bubble.style.height = size + 'px';
+bubble.style.left = Math.random() * 100 + '%';
+bubble.style.animationDuration = (Math.random() * 10 + 10) + 's';
+bubble.style.animationDelay = Math.random() * 5 + 's';
+bubblesContainer.appendChild(bubble);
+}
+}
+});
+</script>
+
+<style>
+:root {
+--font-main: 'Segoe UI', sans-serif;
+--bg-gradient: linear-gradient(180deg, #06172b 0%, #0a2747 40%, #0d3a5c 70%, #05101c 100%);
+--accent: #4fc3f7; --accent-glow: rgba(79, 195, 247, 0.4);
+--glass-bg: rgba(255, 255, 255, 0.05); --glass-border: rgba(255, 255, 255, 0.15);
+--glass-hover: rgba(255, 255, 255, 0.1); --text-main: #e8eef5;
+--text-muted: #9fb8d1; --shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+}
+[data-theme="blue"] { --accent: #4fc3f7; --accent-glow: rgba(79, 195, 247, 0.4); }
+[data-theme="green"] { --accent: #4ade80; --accent-glow: rgba(74, 222, 128, 0.4); }
+[data-theme="orange"] { --accent: #fb923c; --accent-glow: rgba(251, 146, 60, 0.4); }
+[data-theme="purple"] { --accent: #c084fc; --accent-glow: rgba(192, 132, 252, 0.4); }
+[data-theme="red"] { --accent: #f87171; --accent-glow: rgba(248, 113, 113, 0.4); }
+[data-theme="pink"] { --accent: #f472b6; --accent-glow: rgba(244, 114, 182, 0.4); }
+[data-theme="yellow"] { --accent: #fde047; --accent-glow: rgba(253, 224, 71, 0.4); }
+[data-theme="mint"] { --accent: #2dd4bf; --accent-glow: rgba(45, 212, 191, 0.4); }
+[data-theme="cyan"] { --accent: #22d3ee; --accent-glow: rgba(34, 211, 238, 0.4); }
+[data-theme="dark"] { --accent: #94a3b8; --accent-glow: rgba(148, 163, 184, 0.4); }
+[data-font="modern"] { --font-main: 'Montserrat', sans-serif; }
+[data-font="classic"] { --font-main: 'Playfair Display', serif; }
+[data-font="mono"] { --font-main: 'Roboto Mono', monospace; }
+[data-bg="deep"] { --bg-gradient: linear-gradient(180deg, #06172b 0%, #0a2747 40%, #0d3a5c 70%, #05101c 100%); }
+[data-bg="night"] { --bg-gradient: linear-gradient(180deg, #000000 0%, #1a1a2e 40%, #16213e 70%, #000000 100%); }
+[data-bg="forest"] { --bg-gradient: linear-gradient(180deg, #051c14 0%, #0a3827 40%, #0d5c3a 70%, #05100c 100%); }
+
+• { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: var(--font-main); background: var(--bg-gradient); background-attachment: fixed; color: var(--text-main); min-height: 100vh; position: relative; overflow-x: hidden; transition: background 0.8s ease, font-family 0.3s ease; }
+body::before { content: ''; position: fixed; inset: 0; background: radial-gradient(circle at 15% 20%, var(--accent-glow) 0%, transparent 40%), radial-gradient(circle at 85% 80%, var(--accent-glow) 0%, transparent 45%); z-index: 0; pointer-events: none; opacity: 0.6; }
+.bubbles { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+.bubble { position: absolute; bottom: -100px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 50%; animation: rise 15s infinite ease-in; }
+@keyframes rise { 0% { transform: translateY(0) scale(1); opacity: 0; } 20% { opacity: 0.5; } 100% { transform: translateY(-100vh) scale(1.5); opacity: 0; } }
+.container { position: relative; z-index: 1; max-width: 900px; margin: 0 auto; padding: 20px 16px 60px; }
+.settings-btn { position: fixed; top: 20px; right: 20px; width: 50px; height: 50px; border-radius: 50%; background: var(--glass-bg); backdrop-filter: blur(10px); border: 1px solid var(--glass-border); display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 5px; cursor: pointer; z-index: 100; box-shadow: var(--shadow); transition: all 0.3s ease; }
+.settings-btn:hover { background: var(--glass-hover); transform: rotate(90deg); }
+.settings-btn span { display: block; width: 22px; height: 2px; background: var(--accent); border-radius: 2px; }
+.settings-panel { position: fixed; top: 80px; right: -320px; width: 300px; background: rgba(10, 20, 35, 0.95); backdrop-filter: blur(20px); border: 1px solid var(--glass-border); border-radius: 20px; padding: 24px; z-index: 99; box-shadow: var(--shadow); transition: right 0.4s cubic-bezier(0.4, 0, 0.2, 1); max-height: 80vh; overflow-y: auto; }
+.settings-panel.open { right: 20px; }
+.settings-panel h3 { color: var(--accent); font-size: 14px; margin: 20px 0 10px; text-transform: uppercase; border-bottom: 1px solid var(--glass-border); padding-bottom: 5px;}
+.settings-panel h3:first-child { margin-top: 0; }
+.grid-btns { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+.color-btn { height: 35px; border-radius: 8px; border: 2px solid transparent; cursor: pointer; transition: all 0.3s ease; }
+.color-btn.active { border-color: #fff; box-shadow: 0 0 10px var(--accent-glow); transform: scale(1.1); }
+.color-btn.blue { background: #4fc3f7; } .color-btn.green { background: #4ade80; } .color-btn.orange { background: #fb923c; } .color-btn.purple { background: #c084fc; } .color-btn.red { background: #f87171; }
+.color-btn.pink { background: #f472b6; } .color-btn.yellow { background: #fde047; } .color-btn.mint { background: #2dd4bf; } .color-btn.cyan { background: #22d3ee; } .color-btn.dark { background: #94a3b8; }
+.font-btn, .bg-btn { padding: 8px; border-radius: 8px; background: var(--glass-bg); border: 1px solid var(--glass-border); color: #fff; cursor: pointer; text-align: center; font-size: 12px; margin-bottom: 5px; transition: 0.3s; display: block; width: 100%; }
+.font-btn.active, .bg-btn.active { background: var(--accent); color: #000; border-color: #fff; font-weight: bold;}
+.hero { text-align: center; padding: 80px 20px 40px; display: flex; flex-direction: column; align-items: center; }
+.hero-sticker { width: 80px; height: 80px; margin-bottom: 20px; background: linear-gradient(135deg, #fff, var(--accent)); border-radius: 50% 50% 50% 10%; display: flex; align-items: center; justify-content: center; font-size: 40px; box-shadow: 0 10px 30px var(--accent-glow); animation: floating 3s ease-in-out infinite; position: relative; }
+.hero-sticker::after { content: ''; position: absolute; top: 10%; left: 15%; width: 30%; height: 30%; background: rgba(255,255,255,0.8); border-radius: 50%; filter: blur(2px); }
+@keyframes floating { 0%, 100% { transform: translateY(0) rotate(-5deg); } 50% { transform: translateY(-15px) rotate(5deg); } }
+.hero h1 { font-family: var(--font-main); font-size: clamp(28px, 7vw, 48px); font-weight: 900; color: #fff; text-shadow: 0 0 30px var(--accent-glow), 0 4px 10px rgba(0,0,0,0.5); margin-bottom: 16px; line-height: 1.2; }
+.hero p { font-size: clamp(14px, 3.5vw, 18px); color: var(--text-muted); max-width: 600px; margin: 0 auto; line-height: 1.6; }
+.divider { width: 100px; height: 4px; background: linear-gradient(90deg, transparent, var(--accent), transparent); margin: 30px auto; border-radius: 2px; box-shadow: 0 0 15px var(--accent-glow); }
+.section-title { text-align: center; font-size: clamp(20px, 4vw, 26px); font-weight: 800; color: var(--accent); margin: 60px 0 24px; }
+.section-title span { font-size: 32px; display: block; margin-bottom: 8px; }
+.menu { display: flex; flex-direction: column; gap: 14px; margin-top: 20px; }
+.menu-item { background: var(--glass-bg); backdrop-filter: blur(12px); border: 1px solid var(--glass-border); border-radius: 16px; overflow: hidden; transition: all 0.4s ease; box-shadow: var(--shadow); }
+.menu-item:hover { background: var(--glass-hover); border-color: var(--accent); transform: translateY(-2px); box-shadow: 0 10px 40px var(--accent-glow); }
+.menu-item.open { background: rgba(255, 255, 255, 0.08); border-color: var(--accent); }
+.menu-btn { width: 100%; background: none; border: none; color: var(--text-main); font-family: inherit; font-size: clamp(15px, 3.5vw, 18px); font-weight: 600; padding: 20px 24px; cursor: pointer; display: flex; align-items: center; gap: 16px; text-align: left; }
+.menu-btn:hover { color: var(--accent); }
+.num { flex-shrink: 0; width: 38px; height: 38px; border-radius: 12px; background: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.02)); display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 700; color: var(--accent); border: 1px solid var(--glass-border); }
+.arrow { margin-left: auto; font-size: 14px; color: var(--accent); transition: transform 0.4s ease; }
+.menu-item.open .arrow { transform: rotate(180deg); }
+.content { max-height: 0; overflow: hidden; transition: max-height 0.6s ease, padding 0.4s ease; padding: 0 24px; }
+.menu-item.open .content { max-height: 4000px; padding: 0 24px 24px; }
+.content-inner { border-top: 1px solid var(--glass-border); padding-top: 20px; line-height: 1.8; font-size: clamp(14px, 3.2vw, 16px); color: #d0e0f0; }
+.content-inner h3 { color: var(--accent); font-size: 16px; margin: 20px 0 10px; }
+.content-inner h3:first-child { margin-top: 0; }
+.content-inner p { margin-bottom: 12px; }
+.content-inner ul, .content-inner ol { margin: 10px 0 16px 20px; }
+.content-inner li { margin-bottom: 8px; }
+.content-inner strong { color: #fff; }
+.highlight { background: linear-gradient(90deg, var(--accent-glow), transparent); border-left: 4px solid var(--accent); padding: 14px 18px; border-radius: 0 12px 12px 0; margin: 16px 0; font-size: 0.95em; }
+.warning { background: rgba(255,152,0,0.15); border-left: 4px solid #ff9800; padding: 14px 18px; border-radius: 0 12px 12px 0; margin: 16px 0; color: #ffcc80; }
+.tag { display: inline-block; background: var(--glass-bg); border: 1px solid var(--glass-border); color: var(--accent); padding: 4px 12px; border-radius: 20px; font-size: 13px; font-weight: 600; margin-right: 8px; margin-bottom: 8px; }
+.shop-link { display: flex; align-items: center; gap: 16px; padding: 20px 24px; background: var(--glass-bg); backdrop-filter: blur(12px); border: 1px solid var(--glass-border); border-radius: 16px; text-decoration: none; color: var(--text-main); font-weight: 600; font-size: clamp(15px, 3.5vw, 18px); transition: all 0.4s ease; margin-bottom: 14px; box-shadow: var(--shadow); }
+.shop-link:hover { background: var(--glass-hover); border-color: var(--accent); transform: translateX(8px); color: var(--accent); }
+.shop-link .num { background: linear-gradient(135deg, var(--accent), transparent); color: #fff; }
+.shop-link .arrow { transform: rotate(-45deg); font-size: 20px; }
+.shop-link:hover .arrow { transform: rotate(0deg) translateX(8px); }
+.support-btn { display: flex; align-items: center; justify-content: center; gap: 10px; background: linear-gradient(135deg, #22c55e, #16a34a); padding: 20px; border-radius: 16px; color: #fff; font-size: 20px; font-weight: bold; text-decoration: none; box-shadow: 0 5px 20px rgba(34, 197, 94, 0.4); transition: 0.3s; margin: 20px 0; }
+.support-btn:hover { transform: scale(1.02); box-shadow: 0 10px 30px rgba(34, 197, 94, 0.6); }
+.footer { text-align: center; margin-top: 60px; padding: 40px 20px; color: var(--text-muted); font-size: 14px; border-top: 1px solid var(--glass-border); }
+.footer .fish { font-size: 36px; margin-bottom: 12px; display: block; }
+
+/* Игра и викторина */
+.game-container, .quiz-container { background: var(--glass-bg); backdrop-filter: blur(12px); border: 1px solid var(--glass-border); border-radius: 16px; padding: 20px; margin-bottom: 30px; text-align: center; box-shadow: var(--shadow); }
+.water-surface { height: 150px; background: linear-gradient(180deg, rgba(0,50,100,0.3) 0%, rgba(0,100,200,0.5) 100%); border-radius: 12px; position: relative; margin-bottom: 20px; overflow: hidden; border: 2px solid var(--accent); display: flex; justify-content: center; align-items: flex-end; }
+.float { width: 20px; height: 60px; position: relative; margin-bottom: 20px; transition: transform 0.3s ease; }
+.float-top { width: 100%; height: 30px; background: #f87171; border-radius: 10px 10px 0 0; }
+.float-bottom { width: 100%; height: 30px; background: #fff; border-radius: 0 0 10px 10px; }
+@keyframes bite { 0% { transform: translateY(0); } 30% { transform: translateY(-15px); } 60% { transform: translateY(5px); } 100% { transform: translateY(0); } }
+.float.biting { animation: bite 0.5s infinite; }
+.float.hooked { transform: translateY(40px) !important; animation: none !important; }
+.game-controls { display: flex; gap: 10px; justify-content: center; margin-bottom: 15px; }
+.game-btn { padding: 12px 24px; border-radius: 12px; border: none; background: var(--accent); color: #000; font-weight: bold; font-size: 16px; cursor: pointer; transition: 0.3s; box-shadow: 0 4px 15px var(--accent-glow); }
+.game-btn:hover { transform: translateY(-2px); filter: brightness(1.1); }
+.game-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+.hook-btn { background: #f87171; color: #fff; animation: pulse 1s infinite; }
+@keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+.game-status { font-size: 18px; font-weight: bold; color: var(--accent); margin-bottom: 20px; min-height: 25px; }
+.fish-basket { background: rgba(0,0,0,0.2); border-radius: 12px; padding: 15px; text-align: left; }
+.fish-basket h3 { font-size: 16px; color: var(--accent); margin-bottom: 10px; border-bottom: 1px solid var(--glass-border); padding-bottom: 5px; }
+.basket-items { display: flex; flex-wrap: wrap; gap: 8px; }
+.basket-fish { background: rgba(255,255,255,0.1); padding: 5px 10px; border-radius: 20px; font-size: 14px; border: 1px solid var(--glass-border); animation: popIn 0.3s ease; }
+@keyframes popIn { 0% { transform: scale(0); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+.quiz-container { text-align: left; }
+#quizQuestion { font-size: 18px; margin-bottom: 15px; color: #fff; }
+.quiz-options { display: flex; flex-direction: column; gap: 10px; }
+.quiz-opt-btn { padding: 12px; border-radius: 8px; border: 1px solid var(--glass-border); background: rgba(255,255,255,0.05); color: var(--text-main); font-size: 16px; cursor: pointer; text-align: left; transition: 0.3s; }
+.quiz-opt-btn:hover { background: rgba(255,255,255,0.1); }
+.quiz-opt-btn.correct { background: rgba(74, 222, 128, 0.2); border-color: #4ade80; }
+.quiz-opt-btn.wrong { background: rgba(248, 113, 113, 0.2); border-color: #f87171; }
+.quiz-result { margin-top: 15px; font-weight: bold; font-size: 18px; text-align: center; }
+
+@media (max-width: 500px) {
+.container { padding: 10px 12px 40px; }
+.hero { padding: 60px 10px 30px; }
+.settings-panel { width: 260px; right: -280px; padding: 18px; }
+.settings-panel.open { right: 12px; }
+.menu-btn { padding: 16px; gap: 12px; }
+.content { padding: 0 16px; }
+.menu-item.open .content { padding: 0 16px 20px; }
+.num { width: 32px; height: 32px; font-size: 13px; }
+.shop-link { padding: 16px; gap: 12px; }
+}
+</style>
+</head>
+<body data-theme="blue" data-font="modern" data-bg="deep">
+
+<div class="bubbles" id="bubbles"></div>
+
+<div class="settings-btn" id="settingsBtn"><span></span><span></span><span></span></div>
+<div class="settings-panel" id="settingsPanel">
+<h3>Колір</h3>
+<div class="grid-btns">
+<div class="color-btn blue active" data-color="blue"></div>
+<div class="color-btn green" data-color="green"></div>
+<div class="color-btn orange" data-color="orange"></div>
+<div class="color-btn purple" data-color="purple"></div>
+<div class="color-btn red" data-color="red"></div>
+<div class="color-btn pink" data-color="pink"></div>
+<div class="color-btn yellow" data-color="yellow"></div>
+<div class="color-btn mint" data-color="mint"></div>
+<div class="color-btn cyan" data-color="cyan"></div>
+<div class="color-btn dark" data-color="dark"></div>
+</div>
+<h3>Шрифт</h3>
+<button class="font-btn active" data-font="modern" style="font-family: 'Montserrat';">Сучасний</button>
+<button class="font-btn" data-font="classic" style="font-family: 'Playfair Display';">Класичний</button>
+<button class="font-btn" data-font="mono" style="font-family: 'Roboto Mono';">Строгий</button>
+<h3>Фон</h3>
+<button class="bg-btn active" data-bg="deep">Глибина</button>
+<button class="bg-btn" data-bg="night">Ніч</button>
+<button class="bg-btn" data-bg="forest">Ліс</button>
+</div>
+
+<div class="container">
+<div class="hero">
+<div class="hero-sticker">🎣</div>
+<h1>Риболовля для новачків</h1>
+<p>Усе, що потрібно знати, щоб упевнено почати ловити рибу. Натисни на будь-який пункт — і отримаєш докладний розбір.</p>
+<div class="divider"></div>
+</div>
+
+<div class="menu">
+<div class="menu-item"><button class="menu-btn"><span class="num">1</span><span>Вудлища та котушки для новачків</span><span class="arrow">▼</span></button>
+<div class="content"><div class="content-inner"><h3>🎯 Вудлище</h3><p>Для початківця-спінінгіста найкраще підійде <strong>легке вудлище з тестом 1–8 грамів</strong>. Воно чутливе, добре передає гру приманки та прощає помилки. Не гонись за дешевизною — маловідомі китайські моделі часто ламаються.</p><p>Перевірені бренди: <strong>Lucky John, Crazy Fish, Kosadaka, Maximus</strong>. Бюджет — до 3000 гривень. У відомих марок завжди є запасні вершинки.</p><h3>🎣 Котушка</h3><p>Котушка має бути <strong>легкою та простою</strong>. Оптимальний розмір шпулі — <strong>1000</strong>. Вага — не більше 250 грамів.</p><p>Підходящі моделі: <strong>Akara Ultra Sport, Kosadaka Manticora, Daiwa 20 Crossfire LT, Shimano Catana</strong>.</p><div class="highlight">💡 <strong>Порада:</strong> Кількість підшипників — маркетинг. У магазині перевір плавність ходу та відсутність люфтів.</div></div></div>
+</div>
+<div class="menu-item"><button class="menu-btn"><span class="num">2</span><span>Ідеальні проводки для спінінга</span><span class="arrow">▼</span></button>
+<div class="content"><div class="content-inner"><h3>Рівномірна проводка</h3><p>Найпростіша. Закинув — і повільно крутиш котушку. Підходить для вертушок і коливалок. У холодній воді сповільнюйся.</p><h3>Ступінчаста (джиг)</h3><p>Закид, чекаєш падіння на дно. Далі: <strong>2–3 оберти → пауза → знову оберти</strong>. Поклівка найчастіше на паузі.</p><h3>Твічинг</h3><p>Для воблерів-мінноу. Різкі ривки + паузи. Восени паузи до 5–7 секунд.</p><div class="highlight">💡 Якщо серія закидів порожня — <strong>змінюй приманку або сповільнюй проводку</strong>.</div></div></div>
+</div>
+<div class="menu-item"><button class="menu-btn"><span class="num">3</span><span>Як в'язати гачки</span><span class="arrow">▼</span></button>
+<div class="content"><div class="content-inner"><h3>Для новачків: вузол «Клінч»</h3><p>Продягни волосінь у вушко, зроби 5–6 обертів, продягни кінчик у петлю біля вушка, змочи та затягни.</p><h3>Для просунутих: «Паломар»</h3><p>Склади волосінь удвічі, продягни петлю у вушко, перекинь через гачок, продягни кінці, змочи та затягни.</p><h3>Що важливо знати</h3><ul><li><strong>Коротке ців'я</strong> — для хліба, зерна, каші</li><li><strong>Довге ців'я</strong> — для черв'яка, личинок, живця</li><li>Гачок має бути <strong>гострим</strong> — перевіряй на нігті</li></ul><div class="highlight">💡 Завжди змочуй вузол перед затягуванням.</div></div></div>
+</div>
+<div class="menu-item"><button class="menu-btn"><span class="num">4</span><span>Що таке фідер?</span><span class="arrow">▼</span></button>
+<div class="content"><div class="content-inner"><h3>Визначення</h3><p><strong>Фідер</strong> — донна снасть з годівницею. Вудлище з гнучкою вершинкою, на кінці — годівниця з прикормкою та гачок. Ти постійно підгодовуєш точку, і риба підходить сама.</p><h3>Що потрібно для старту</h3><ul><li>Фідерне вудлище 3–4 метри</li><li>Котушка 3000–4000</li><li>Годівниці різної ваги</li><li>Грузик для заміру дна</li><li>Багато прикормки</li></ul><p>На фідер ловлять ляща, карася, коропа, плітку, густеру.</p></div></div>
+</div>
+<div class="menu-item"><button class="menu-btn"><span class="num">5</span><span>Карпова ловля та флет-метод</span><span class="arrow">▼</span></button>
+<div class="content"><div class="content-inner"><h3>Що таке карпова ловля</h3><p>Окремий напрямок зі своїми снастями, прикормками та філософією. Для новачка простіше почати з <strong>флет-методу</strong>.</p><h3>Флет-метод</h3><p><strong>Флет</strong> — плоска годівниця з важкою основою. Гачок на <strong>дуже короткому повідці (5–10 см)</strong> лежить у прикормці. Риба ссе корм і випадково засікається — самопідсічка.</p><h3>Як в'язати флет</h3><ol><li>Волосінь через тіло годівниці</li><li>Бусина та вертлюжок</li><li>Поводок 5–10 см</li><li>Насадка вставляється в корм</li><li>Корм утрамбовується прес-формою</li></ol><h3>Як замішувати пелетс</h3><p>Заливають водою і дають розм'якнути. Пропорція 1:1, настояти 10–20 хвилин. Консистенція — густа каша, яка тримається в годівниці, але розпадається у воді.</p><div class="highlight">💡 Не роби поводок довшим за 10 см — інакше самопідсічка не спрацює.</div></div></div>
+</div>
+<div class="menu-item"><button class="menu-btn"><span class="num">6</span><span>Осінній жор щуки</span><span class="arrow">▼</span></button>
+<div class="content"><div class="content-inner"><h3>Коли ловити</h3><p>Пік — <strong>світанок і вечірні сутінки</strong>. Восени грубі снасті можуть відлякати щуку.</p><h3>Де шукати</h3><ul><li>Край рослинності та очерету</li><li>Звали глибини поруч із мілинами</li><li>Гирла приток</li><li>Бровки та ями</li></ul><h3>Ідеальні проводки</h3><p><strong>Твічинг із довгими паузами</strong> — різкі ривки + паузи до 5–7 секунд. Поклівка найчастіше в момент зупинки.</p><p><strong>Ступінчаста</strong> для джига: 3–4 оберти → пауза. Восени паузи довші.</p><h3>Приманки</h3><p>Великі воблери (від 10 см), джиг, поролон, коливалки. У прозорій воді — натуральні кольори, у каламутній — яскраві.</p></div></div>
+</div>
+<div class="menu-item"><button class="menu-btn"><span class="num">7</span><span>Що таке сітки? (Дисклеймер)</span><span class="arrow">▼</span></button>
+<div class="content"><div class="content-inner"><div class="warning">⚠️ <strong>Важливо:</strong> Сітки — це браконьєрство. У більшості водойм любительська ловля сітками <strong>заборонена законом</strong> і карається штрафами та кримінальною відповідальністю. Використовувати їх можна <strong>лише на своїх приватних водоймах</strong>.</div><h3>Що це технічно</h3><p>Полотно з волосіні з комірками, ставиться поперек руху риби. Риба заплутується зябрами.</p><h3>Чому це погано</h3><p>Сітки виловлюють <strong>усе підряд</strong> — і велику рибу, і молодь. Покинуті сітки продовжують «ловити» роками.</p><div class="highlight">💡 <strong>Легальна альтернатива:</strong> опануй фідер або карпову ловлю.</div></div></div>
+</div>
+<div class="menu-item"><button class="menu-btn"><span class="num">8</span><span>Наживки: що насаджувати і на яку рибу</span><span class="arrow">▼</span></button>
+<div class="content"><div class="content-inner"><h3>Універсальні</h3><p><span class="tag">Черв'як</span> Лящ, сазан, сом, карась, окунь. Класика.</p><p><span class="tag">Опариш</span> Уклейка, карась, плітка, лин, язь, окунь.</p><p><span class="tag">Мотиль</span> Лящ, густера, плітка. Ідеальний взимку.</p><h3>Для хижака</h3><p><span class="tag">Живець</span> Щука, окунь, судак. Дрібна рибка 5–8 см.</p><p><span class="tag">Мертва риба</span> Сом, щука, судак.</p><p><span class="tag">П'явка</span> Судак, сазан, щука, великий окунь.</p><h3>Рослинні</h3><p><span class="tag">Кукурудза</span> Короп, плітка, карась.</p><p><span class="tag">Хліб</span> Плітка, карась, лящ.</p><p><span class="tag">Коник</span> Сом, головень, язь.</p><div class="highlight">💡 Чим холодніша вода — тим більше тваринної наживки.</div></div></div>
+</div>
+<div class="menu-item"><button class="menu-btn"><span class="num">9</span><span>Раколовка: що це і що класти</span><span class="arrow">▼</span></button>
+<div class="content"><div class="content-inner"><h3>Що таке раколовка</h3><p>Пастка для раків — конусна або кільцева сітка з входом. Ставиться на дно на ніч. Найкращий час: <strong>з 22:00 до 4:00</strong>.</p><h3>Де ставити</h3><ul><li>Чиста вода, тверде дно</li><li>Глибина 0,5–3 метри</li><li>Затоки, стариці, корчі</li></ul><h3>Що класти</h3><ul><li><strong>Свіжа риба</strong> — надріж для запаху</li><li><strong>Куряча печінка</strong> або яловичі легені</li><li><strong>Нежирне м'ясо</strong></li><li><strong>Жаба</strong></li><li><strong>Макуха соняшника</strong></li></ul><div class="highlight">💡 Загорни приманку в марлю — запах іде, а рак не з'їсть швидко.</div></div></div>
+</div>
+<div class="menu-item"><button class="menu-btn"><span class="num">10</span><span>Ехолот: навіщо він потрібен</span><span class="arrow">▼</span></button>
+<div class="content"><div class="content-inner"><h3>Що це</h3><p><strong>Ехолот</strong> — прилад, який посилає сигнал у воду і показує глибину, рельєф дна та об'єкти в товщі води.</p><h3>Чому корисний</h3><ul><li><strong>Знаходить перспективні точки:</strong> бровки, ями, корчі</li><li><strong>Показує глибину</strong> — важливо для фідера та джига</li><li><strong>Допомагає знайти стаю</strong> риби</li><li>Економить час на незнайомій водоймі</li></ul><h3>Важливо розуміти</h3><p>Ехолот — <strong>не гарантія улову</strong>. Він показує, де риба <em>може</em> бути. Основне завдання — розвідка рельєфу.</p><p>Для берега є бездротові ехологи (типу Deeper), які закидаються з берега.</p></div></div>
+</div>
+<div class="menu-item"><button class="menu-btn"><span class="num">11</span><span>Як зрозуміти, що у водоймі є риба</span><span class="arrow">▼</span></button>
+<div class="content"><div class="content-inner"><h3>Дивись на воду</h3><ul><li><strong>Сплески малька</strong> — поруч полює хижак</li><li><strong>Круги на воді</strong> — риба годується</li><li><strong>Бульбашки з дна</strong> — лящ, карась або короп риються в ґрунті</li><li><strong>«Казан»</strong> — вода кипить від сплесків</li></ul><h3>Дивись на птахів</h3><p>Чайки, що кружляють над водою або пікірують в одну точку — вірна ознака, що там мальок, а під ним хижак.</p></div></div>
+</div>
+<div class="menu-item"><button class="menu-btn"><span class="num">12</span><span>Як зрозуміти, яку рибу ти зловив</span><span class="arrow">▼</span></button>
+<div class="content"><div class="content-inner"><h3>Основні ознаки</h3><ul><li><strong>Щука</strong> — витягнуте тіло, плямиста окраска, зубаста паща</li><li><strong>Окунь</strong> — смугастий, колючий спинний плавець, червоні плавці</li><li><strong>Судак</strong> — витягнутий, з темними смугами, великі ікла</li><li><strong>Лящ</strong> — високе тіло, сріблястий, довгий анальний плавець</li><li><strong>Карась</strong> — високе тіло, золотистий або сріблястий</li><li><strong>Плітка</strong> — срібляста, червоні очі та плавці</li><li><strong>Короп</strong> — великий, з вусами, золотисто-коричневий</li></ul><div class="highlight">💡 Сфотографуй рибу і подивись у додатку-визначнику або запитай у досвідченого рибалки.</div></div></div>
+</div>
+<div class="menu-item"><button class="menu-btn"><span class="num">13</span><span>Зачепився за траву або корч</span><span class="arrow">▼</span></button>
+<div class="content"><div class="content-inner"><h3>Якщо зачепився за траву</h3><ol><li>Не смикай різко — порвеш снасть</li><li>Послаб волосінь і зачекай — іноді приманка сама звільняється</li><li>Спробуй посмикати кінчиком вудлища в різні боки</li><li>Якщо не допомагає — повільно тягни, але будь готовий, що порветься</li></ol><h3>Якщо зачепився за корч</h3><ol><li>Не тягни сильно — тільки глибше засадиш гачок</li><li>Спробуй «відбити» приманку: різко послаб волосінь і знову натягни</li><li>Використовуй відчеп (спеціальний пристрій для звільнення приманок)</li><li>Якщо не виходить — обривай, але постарайся зберегти якнайбільше волосіні</li></ol><div class="highlight">💡 <strong>Лайфхак:</strong> Завжди носи з собою відчеп — він рятує і приманки, і нерви.</div></div></div>
+</div>
+</div>
+
+<h2 class="section-title"><span>📚</span>Додатково</h2>
+<div class="menu">
+<div class="menu-item"><button class="menu-btn"><span class="num">14</span><span>Погода та час: коли клює найкраще</span><span class="arrow">▼</span></button>
+<div class="content"><div class="content-inner"><h3>Найкращий час доби</h3><p><strong>Світанок (4:00–7:00)</strong> та <strong>вечірні сутінки (18:00–21:00)</strong> — золотий час риболовлі. У спеку риба йде на глибину, а на зорі та ввечері годується біля берега.</p><h3>Погода</h3><ul><li><strong>Стабільна погода</strong> 2–3 дні — риба активна</li><li><strong>Різка зміна тиску</strong> — клів слабшає</li><li><strong>Перед грозою</strong> — часто хороший жор хижака</li><li><strong>Теплий дощ</strong> — плюс для білої риби</li><li><strong>Вітер</strong> — найкращий західний та південний, гірший — східний</li></ul><h3>Пори року</h3><p><strong>Весна</strong> — жор перед нерестом. <strong>Літо</strong> — ранок і вечір. <strong>Осінь</strong> — жор хижака. <strong>Зима</strong> — ловля зі льоду, найкраще по першому та останньому льоду.</p><div class="highlight">💡 Веди щоденник риболовлі: записуй погоду, місце, приманку та результат. Через місяць побачиш закономірності.</div></div></div>
+</div>
+<div class="menu-item"><button class="menu-btn"><span class="num">15</span><span>Прикормка: як привчити рибу до точки</span><span class="arrow">▼</span></button>
+<div class="content"><div class="content-inner"><h3>Основа</h3><p>Прикормка створює <strong>кормове пятно</strong>. Риба звикає до місця і повертається.</p><h3>Склад</h3><ul><li><strong>База</strong> — панірувальні сухарі, макуха, вівсянка</li><li><strong>Аромат</strong> — аніс, ваніль, мед, часник</li><li><strong>Тваринна частина</strong> — мотиль, опариш, черв'як</li><li><strong>Баласт</strong> — земля або глина для важкої прикормки</li></ul><h3>Правила</h3><ul><li>Не перегодовуй — риба наїдається і не бере наживку</li><li>У холодній воді — менше прикормки, більше аромату</li><li>Кидай в одну точку</li></ul><div class="highlight">💡 Спочатку 5–6 стартових закидів з годівницею, далі — точково.</div></div></div>
+</div>
+<div class="menu-item"><button class="menu-btn"><span class="num">16</span><span>Безпека на риболовлі</span><span class="arrow">▼</span></button>
+<div class="content"><div class="content-inner"><h3>На воді</h3><ul><li>Рятувальний жилет на човні — обов'язково</li><li>Не лови під час грози — вудлище як громовідвід</li><li>Не заходь у незнайому воду — ями та корчі</li><li>Стеж за рівнем води на гірських річках</li></ul><h3>Гачки та снасті</h3><ul><li>Тримай гачки окремо — сумка або коробка</li><li>Обов'язково кусачки для волосіні</li><li>Аптечка: пластир, антисептик, пінцет для гачка</li></ul><h3>Сонце та комахи</h3><ul><li>Крем SPF, головний убір</li><li>Репелент від комарів та кліщів</li><li>Після лісу — огляд на кліщів</li></ul><div class="highlight">💡 Якщо гачок у шкірі — не витягай різко, звернись до лікаря.</div></div></div>
+</div>
+<div class="menu-item"><button class="menu-btn"><span class="num">17</span><span>Як зберігати та готувати улов</span><span class="arrow">▼</span></button>
+<div class="content"><div class="content-inner"><h3>Зберігання</h3><ul><li><strong>Садок</strong> у воді — риба жива до кінця риболовлі</li><li><strong>Кукан</strong> — для хижака, але риба швидко гине</li><li><strong>Термосумка з льодом</strong> — якщо довго до дому</li><li><strong>Засолити одразу</strong> — якщо спека</li></ul><h3>Чищення</h3><ul><li>Чисть одразу або заморозь — свіжа риба краще</li><li>Видаляй зябра та нутрощі — джерело гіркоти</li><li>Промивай холодною водою</li></ul><h3>Смаження</h3><p>Обваляй у борошні з сіллю та перцем, смаж на розігрітій олії до золотистої скоринки.</p><div class="highlight">💡 Дрібну рибу (плітка, окунь) краще в'ялити або смажити цілою.</div></div></div>
+</div>
+<div class="menu-item"><button class="menu-btn"><span class="num">18</span><span>Помилки новачків</span><span class="arrow">▼</span></button>
+<div class="content"><div class="content-inner"><ul><li><strong>Занадто товста волосінь</strong> — риба бачить і не бере</li><li><strong>Тупий гачок</strong> — підсічка не виходить, риба сходить</li><li><strong>Шум і різкі рухи</strong> — відлякують рибу біля берега</li><li><strong>Одна приманка весь день</strong> — не знайшов «ключик»</li><li><strong>Немає плану</strong> — кидаєш навмання замість пошуку рельєфу</li><li><strong>Перегодовування</strong> — риба сита, наживку ігнорує</li><li><strong>Ігнорування погоди</strong> — виходиш у найгірший час</li><li><strong>Поспіх при підсічці</strong> — смикаєш до поклівки</li></ul><div class="highlight">💡 Найкращий спосіб навчитись — ловити з досвідченим рибалкою.</div></div></div>
+</div>
+<div class="menu-item"><button class="menu-btn"><span class="num">19</span><span>Зимова риболовля: з чого почати</span><span class="arrow">▼</span></button>
+<div class="content"><div class="content-inner"><h3>Спорядження</h3><ul><li><strong>Льодобур</strong> — 130–150 мм</li><li><strong>Зимова вудка</strong> з кивком</li><li><strong>Мотиль, опариш, черв'як</strong></li><li><strong>Ящик</strong> для сидіння та зберігання</li><li><strong>Теплий одяг</strong> та льодоступи</li></ul><h3>Безпека</h3><ul><li>Лід <strong>мінімум 7 см</strong> для людини</li><li>Не ходи поодинці</li><li>Перевіряй лід пішнею</li><li>Не збирайся великими групами</li></ul><h3>Тактика</h3><p>Буриш лунки на відстані 3–5 м, перевіряєш кожну, знаходиш рибу — затримуєшся.</p><div class="highlight">💡 Найкращий клів — перший та останній лід.</div></div></div>
+</div>
+</div>
+
+<h2 class="section-title"><span>🛒</span>Популярні магазини</h2>
+<a class="shop-link" href="https://flagman.kiev.ua" target="_blank"><span class="num">🏪</span><span>Флагман (Flagman)</span><span class="arrow">→</span></a>
+<a class="shop-link" href="https://fanatik.com.ua" target="_blank"><span class="num">🏪</span><span>Фанатик (Fanatik)</span><span class="arrow">→</span></a>
+<a class="shop-link" href="https://apxtackle.com" target="_blank"><span class="num">🏪</span><span>Apex Fishing</span><span class="arrow">→</span></a>
+
+<h2 class="section-title"><span>🤯</span>Цікаві факти про риб</h2>
+<div class="menu" style="margin-bottom: 40px;">
+<div class="menu-item"><button class="menu-btn"><span class="num">1</span><span>Риби не відчувають болю?</span><span class="arrow">▼</span></button><div class="content"><div class="content-inner"><p>Насправді відчувають, але інакше. У них немає больових рецепторів, як у людей, але вони реагують на пошкодження тканин та небезпеку. Тому гачок краще знімати максимально швидко та акуратно.</p></div></div></div>
+<div class="menu-item"><button class="menu-btn"><span class="num">2</span><span>Сом — найбільший солодководний хижак</span><span class="arrow">▼</span></button><div class="content"><div class="content-inner"><p>Соми можуть виростати до 3–4 метрів і важити понад 200 кг! Вони полюють вночі, орієнтуючись на нюх та бічну лінію, яка відчуває найменші коливання води.</p></div></div></div>
+<div class="menu-item"><button class="menu-btn"><span class="num">3</span><span>Щука бачить на 360 градусів</span><span class="arrow">▼</span></button><div class="content"><div class="content-inner"><p>Очі щуки розташовані так, що вона бачить майже все навколо себе. Вона не має "сліпих зон" і може побачити приманку навіть за спиною. Тому на щуку краще ловити з обережністю, щоб не злякати її тінню.</p></div></div></div>
+<div class="menu-item"><button class="menu-btn"><span class="num">4</span><span>Риби п'ють воду?</span><span class="arrow">▼</span></button><div class="content"><div class="content-inner"><p>Прісноводні риби майже не п'ють воду через зябра, оскільки вода постійно надходить в їхній організм через осмос. А ось морські риби, навпаки, змушені пити воду постійно, щоб не зневоднитися.</p></div></div></div>
+<div class="menu-item"><button class="menu-btn"><span class="num">5</span><span>Найстаріша риба у світі</span><span class="arrow">▼</span></button><div class="content"><div class="content-inner"><p>Гренландська полярна акула може жити понад 400 років! Вона росте дуже повільно і досягає статевої зрілості лише у віці 150 років. Це довгожитель серед хребетних тварин.</p></div></div></div>
+<div class="menu-item"><button class="menu-btn"><span class="num">6</span><span>Чому риба не замерзає взимку?</span><span class="arrow">▼</span></button><div class="content"><div class="content-inner"><p>У риб є спеціальні білки-антифризи в крові, які запобігають утворенню льоду в тканинах. Взимку риби сповільнюють метаболізм і опускаються на глибину, де вода тепліша (+4°C).</p></div></div></div>
+</div>
+
+<h2 class="section-title"><span>🍲</span>Рецепт справжньої юшки</h2>
+<div class="menu" style="margin-bottom: 40px;">
+<div class="menu-item"><button class="menu-btn"><span class="num">🍲</span><span>Як зварити юшку на кострі</span><span class="arrow">▼</span></button>
+<div class="content"><div class="content-inner"><p>Справжня юшка — це не просто суп, це ритуал. Ось перевірений рецепт:</p><h3>Інгредієнти:</h3><ul><li>Дрібна риба для бульйону (окунь, плітка)</li><li>Велика риба (щука, судак, сом)</li><li>Картопля, морква, цибуля</li><li>Лавровий лист, перець горошком, сіль</li><li>50 грам горілки (для запаху, за бажанням)</li><li>Зелень та ложка деревного вугілля (для "диму")</li></ul><h3>Приготування:</h3><ol><li>Закип'яти воду, поклади дрібну рибу (не чищену) для наваристого бульйону. Вари 20 хвилин, потім викинь її.</li><li>Додай картоплю, моркву, цибулю. Вари 10 хвилин.</li><li>Поклади велику рибу, порізану на шматки. Вари ще 10-15 хвилин.</li><li>Додай лавровий лист, перець, сіль за смаком.</li><li>В кінці кинь вугілля (це дасть той самий "костровий" аромат) та зелень.</li></ol><div class="highlight">💡 <strong>Секрет:</strong> Ніколи не закривай кришку, коли вариш юшку, і не заважай її ложкою — риба має розваритися природньо.</div></div></div>
+</div>
+</div>
+
+<!-- ИГРА -->
+<h2 class="section-title"><span>🎮</span>Міні-гра: Риболовля</h2>
+<div class="game-container" id="gameArea">
+<div class="water-surface" id="waterSurface"><div class="float" id="floatBobber"><div class="float-top"></div><div class="float-bottom"></div></div></div>
+<div class="game-controls">
+<button id="castBtn" class="game-btn">🎣 Закинути вудку</button>
+<button id="hookBtn" class="game-btn hook-btn" style="display:none;">⚡ Підсікти!</button>
+</div>
+<div class="game-status" id="gameStatus">Закинь вудку та чекай на поклівку...</div>
+<div class="fish-basket"><h3>🧺 Твій садок (<span id="fishCount">0</span>)</h3><div class="basket-items" id="basketItems"></div></div>
+</div>
+
+<!-- ВИКТОРИНА -->
+<h2 class="section-title"><span>🧠</span>Вікторина: Знавець риби</h2>
+<div class="quiz-container">
+<div id="quizContent">
+<h3 id="quizQuestion">Питання завантажується...</h3>
+<div class="quiz-options" id="quizOptions"></div>
+<div class="quiz-result" id="quizResult"></div>
+<button id="quizNextBtn" class="game-btn" style="display:none; margin-top: 15px;">Наступне питання</button>
+</div>
+</div>
+
+<h2 class="section-title"><span>📞</span>Підтримка</h2>
+<a href="tel:+380974196900" class="support-btn"><span>📞</span> +380 97 419 69 00</a>
+<p style="text-align: center; color: var(--text-muted); font-size: 14px; margin-bottom: 40px;">Натисніть, щоб зателефонувати</p>
+
+<div class="footer"><span class="fish">🐟</span>Ні хвоста, ні луски! Вдалої риболовлі.</div>
+</div>
+
+</body>
+</html>
